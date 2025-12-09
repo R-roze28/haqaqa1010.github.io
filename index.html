@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Game Collection</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
@@ -26,9 +26,9 @@
         -webkit-tap-highlight-color: transparent;
     }
 
-    html {
-        font-size: 16px;
-        scroll-behavior: smooth;
+    html, body {
+        height: 100%;
+        overflow-x: hidden;
     }
 
     body {
@@ -39,10 +39,10 @@
         background-image: 
             radial-gradient(circle at 10% 20%, rgba(0, 234, 255, 0.05) 0%, transparent 20%),
             radial-gradient(circle at 90% 80%, rgba(0, 234, 255, 0.05) 0%, transparent 20%);
-        overflow-x: hidden;
         line-height: 1.5;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        /* HAPUS overflow-x: hidden dari sini */
     }
 
     .container {
@@ -50,7 +50,7 @@
         margin: 0 auto;
         padding: var(--mobile-padding);
         padding-top: env(safe-area-inset-top, var(--mobile-padding));
-        padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+        padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     }
 
     /* Header Mobile */
@@ -205,6 +205,7 @@
         flex-direction: column;
         gap: 15px;
         margin-top: 10px;
+        margin-bottom: 30px; /* Tambah margin bottom */
     }
 
     .card {
@@ -378,7 +379,8 @@
         border-top: 1px solid rgba(255, 255, 255, 0.05);
         color: var(--text-secondary);
         font-size: 0.8rem;
-        padding-bottom: 80px;
+        padding-bottom: 20px;
+        margin-bottom: 80px; /* Tambah margin bottom untuk space navigasi */
     }
 
     .footer a {
@@ -414,6 +416,7 @@
     @media (min-width: 481px) and (max-width: 768px) {
         .container {
             padding: 20px;
+            max-width: 100%;
         }
         
         h1 {
@@ -456,6 +459,7 @@
         .container {
             max-width: 900px;
             padding: 30px 20px;
+            padding-bottom: 40px;
         }
         
         .mobile-header {
@@ -519,7 +523,7 @@
         }
         
         .footer {
-            padding-bottom: 20px;
+            margin-bottom: 20px;
         }
     }
 
@@ -527,6 +531,7 @@
     @media (max-height: 500px) and (orientation: landscape) {
         .container {
             padding-top: 10px;
+            padding-bottom: 60px;
         }
         
         header {
@@ -573,219 +578,227 @@
             padding-right: max(var(--mobile-padding), env(safe-area-inset-right));
         }
     }
+
+    /* Scroll fix */
+    .scroll-container {
+        height: 100%;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
 </style>
 </head>
 <body>
-
-<div class="container">
-    <!-- Header Mobile -->
-    <div class="mobile-header">
-        <div class="menu-toggle">
-            <i class="fas fa-bars"></i>
+<div class="scroll-container"> <!-- Tambah wrapper untuk scroll -->
+    <div class="container">
+        <!-- Header Mobile -->
+        <div class="mobile-header">
+            <div class="menu-toggle">
+                <i class="fas fa-bars"></i>
+            </div>
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-gamepad"></i>
+                </div>
+                <div class="logo-text">Games</div>
+            </div>
+            <div class="menu-toggle">
+                <i class="fas fa-search"></i>
+            </div>
         </div>
-        <div class="logo">
-            <div class="logo-icon">
+
+        <header>
+            <h1>Game Collection</h1>
+            <p class="subtitle">Koleksi game HTML5 yang menarik dan menghibur. Pilih game favorit Anda dan mulailah petualangan seru!</p>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value">7</div>
+                    <div class="stat-label">Total Game</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">100%</div>
+                    <div class="stat-label">Gratis</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">HTML5</div>
+                    <div class="stat-label">Teknologi</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="game-list">
+            <a href="Dte.html" class="card">
+                <div class="game-icon">
+                    <i class="fas fa-running"></i>
+                </div>
+                <div class="game-content">
+                    <div class="game-header">
+                        <h3 class="game-title">Dodge The Enemy</h3>
+                    </div>
+                    <p class="game-desc">Hindari musuh yang mendekat dan bertahan selama mungkin dalam game aksi cepat ini.</p>
+                    <div class="game-footer">
+                        <span class="game-category">Aksi</span>
+                        <div class="arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+
+            <a href="brick-breaker.html" class="card">
+                <div class="game-icon">
+                    <i class="fas fa-table-tennis"></i>
+                </div>
+                <div class="game-content">
+                    <div class="game-header">
+                        <h3 class="game-title">Brick Breaker</h3>
+                    </div>
+                    <p class="game-desc">Hancurkan semua bata dengan bola dan paddle dalam game klasik yang menantang.</p>
+                    <div class="game-footer">
+                        <span class="game-category">Arcade</span>
+                        <div class="arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+
+            <a href="snake-mobile.html" class="card">
+                <div class="game-icon">
+                    <i class="fas fa-snake"></i>
+                </div>
+                <div class="game-content">
+                    <div class="game-header">
+                        <h3 class="game-title">Snake Mini</h3>
+                    </div>
+                    <p class="game-desc">Kendalikan ular yang semakin panjang dan makan makanan tanpa menabrak diri sendiri.</p>
+                    <div class="game-footer">
+                        <span class="game-category">Klasik</span>
+                        <div class="arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="kotak-game.html" class="card">
+                <div class="game-icon">
+                    <i class="fas fa-hand-pointer"></i>
+                </div>
+                <div class="game-content">
+                    <div class="game-header">
+                        <h3 class="game-title">Touch Me</h3>
+                    </div>
+                    <p class="game-desc">Uji refleks dan ketepatan Anda dengan menyentuh target yang muncul di layar.</p>
+                    <div class="game-footer">
+                        <span class="game-category">Refleks</span>
+                        <div class="arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="flappy.html" class="card">
+                <div class="game-icon">
+                    <i class="fas fa-dove"></i>
+                </div>
+                <div class="game-content">
+                    <div class="game-header">
+                        <h3 class="game-title">Flappy Bird</h3>
+                    </div>
+                    <p class="game-desc">Terbang melalui pipa dengan mengetuk layar. Hindari semua rintangan!</p>
+                    <div class="game-footer">
+                        <span class="game-category">Ketepatan</span>
+                        <div class="arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="drag-race.html" class="card">
+                <div class="game-icon">
+                    <i class="fas fa-flag-checkered"></i>
+                </div>
+                <div class="game-content">
+                    <div class="game-header">
+                        <h3 class="game-title">Drag Race</h3>
+                    </div>
+                    <p class="game-desc">Balapan drag dengan timing yang sempurna untuk mencapai garis finish pertama.</p>
+                    <div class="game-footer">
+                        <span class="game-category">Balapan</span>
+                        <div class="arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="racing-track.html" class="card">
+                <div class="game-icon">
+                    <i class="fas fa-car"></i>
+                </div>
+                <div class="game-content">
+                    <div class="game-header">
+                        <h3 class="game-title">Racing Track</h3>
+                    </div>
+                    <p class="game-desc">Kendarai mobil di trek yang menantang dengan kontrol yang responsif.</p>
+                    <div class="game-footer">
+                        <span class="game-category">Mengemudi</span>
+                        <div class="arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="footer">
+            <p>Game Collection &copy; 2023 | Dibuat dengan <i class="fas fa-heart" style="color: #ff4d4d;"></i> untuk penggemar game</p>
+            <p>Semua game menggunakan teknologi HTML5 dan dapat dimainkan di perangkat apa pun.</p>
+        </div>
+    </div>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav">
+        <a href="#" class="nav-item active">
+            <div class="nav-icon">
+                <i class="fas fa-home"></i>
+            </div>
+            <div class="nav-text">Beranda</div>
+        </a>
+        <a href="#" class="nav-item">
+            <div class="nav-icon">
                 <i class="fas fa-gamepad"></i>
             </div>
-            <div class="logo-text">Games</div>
-        </div>
-        <div class="menu-toggle">
-            <i class="fas fa-search"></i>
-        </div>
-    </div>
-
-    <header>
-        <h1>Game Collection</h1>
-        <p class="subtitle">Koleksi game HTML5 yang menarik dan menghibur. Pilih game favorit Anda dan mulailah petualangan seru!</p>
-        
-        <div class="stats">
-            <div class="stat-item">
-                <div class="stat-value">7</div>
-                <div class="stat-label">Total Game</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">100%</div>
-                <div class="stat-label">Gratis</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">HTML5</div>
-                <div class="stat-label">Teknologi</div>
-            </div>
-        </div>
-    </header>
-
-    <div class="game-list">
-        <a href="Dte.html" class="card">
-            <div class="game-icon">
-                <i class="fas fa-running"></i>
-            </div>
-            <div class="game-content">
-                <div class="game-header">
-                    <h3 class="game-title">Dodge The Enemy</h3>
-                </div>
-                <p class="game-desc">Hindari musuh yang mendekat dan bertahan selama mungkin dalam game aksi cepat ini.</p>
-                <div class="game-footer">
-                    <span class="game-category">Aksi</span>
-                    <div class="arrow">
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                </div>
-            </div>
+            <div class="nav-text">Game</div>
         </a>
-
-        <a href="brick-breaker.html" class="card">
-            <div class="game-icon">
-                <i class="fas fa-table-tennis"></i>
+        <a href="#" class="nav-item">
+            <div class="nav-icon">
+                <i class="fas fa-fire"></i>
             </div>
-            <div class="game-content">
-                <div class="game-header">
-                    <h3 class="game-title">Brick Breaker</h3>
-                </div>
-                <p class="game-desc">Hancurkan semua bata dengan bola dan paddle dalam game klasik yang menantang.</p>
-                <div class="game-footer">
-                    <span class="game-category">Arcade</span>
-                    <div class="arrow">
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                </div>
-            </div>
+            <div class="nav-text">Trending</div>
         </a>
-
-        <a href="snake-mobile.html" class="card">
-            <div class="game-icon">
-                <i class="fas fa-snake"></i>
+        <a href="#" class="nav-item">
+            <div class="nav-icon">
+                <i class="fas fa-user"></i>
             </div>
-            <div class="game-content">
-                <div class="game-header">
-                    <h3 class="game-title">Snake Mini</h3>
-                </div>
-                <p class="game-desc">Kendalikan ular yang semakin panjang dan makan makanan tanpa menabrak diri sendiri.</p>
-                <div class="game-footer">
-                    <span class="game-category">Klasik</span>
-                    <div class="arrow">
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                </div>
-            </div>
-        </a>
-        
-        <a href="kotak-game.html" class="card">
-            <div class="game-icon">
-                <i class="fas fa-hand-pointer"></i>
-            </div>
-            <div class="game-content">
-                <div class="game-header">
-                    <h3 class="game-title">Touch Me</h3>
-                </div>
-                <p class="game-desc">Uji refleks dan ketepatan Anda dengan menyentuh target yang muncul di layar.</p>
-                <div class="game-footer">
-                    <span class="game-category">Refleks</span>
-                    <div class="arrow">
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                </div>
-            </div>
-        </a>
-        
-        <a href="flappy.html" class="card">
-            <div class="game-icon">
-                <i class="fas fa-dove"></i>
-            </div>
-            <div class="game-content">
-                <div class="game-header">
-                    <h3 class="game-title">Flappy Bird</h3>
-                </div>
-                <p class="game-desc">Terbang melalui pipa dengan mengetuk layar. Hindari semua rintangan!</p>
-                <div class="game-footer">
-                    <span class="game-category">Ketepatan</span>
-                    <div class="arrow">
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                </div>
-            </div>
-        </a>
-        
-        <a href="drag-race.html" class="card">
-            <div class="game-icon">
-                <i class="fas fa-flag-checkered"></i>
-            </div>
-            <div class="game-content">
-                <div class="game-header">
-                    <h3 class="game-title">Drag Race</h3>
-                </div>
-                <p class="game-desc">Balapan drag dengan timing yang sempurna untuk mencapai garis finish pertama.</p>
-                <div class="game-footer">
-                    <span class="game-category">Balapan</span>
-                    <div class="arrow">
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                </div>
-            </div>
-        </a>
-        
-        <a href="racing-track.html" class="card">
-            <div class="game-icon">
-                <i class="fas fa-car"></i>
-            </div>
-            <div class="game-content">
-                <div class="game-header">
-                    <h3 class="game-title">Racing Track</h3>
-                </div>
-                <p class="game-desc">Kendarai mobil di trek yang menantang dengan kontrol yang responsif.</p>
-                <div class="game-footer">
-                    <span class="game-category">Mengemudi</span>
-                    <div class="arrow">
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                </div>
-            </div>
+            <div class="nav-text">Profil</div>
         </a>
     </div>
-    
-    <div class="footer">
-        <p>Game Collection &copy; 2023 | Dibuat dengan <i class="fas fa-heart" style="color: #ff4d4d;"></i> untuk penggemar game</p>
-        <p>Semua game menggunakan teknologi HTML5 dan dapat dimainkan di perangkat apa pun.</p>
-    </div>
-</div>
-
-<!-- Mobile Navigation -->
-<div class="mobile-nav">
-    <a href="#" class="nav-item active">
-        <div class="nav-icon">
-            <i class="fas fa-home"></i>
-        </div>
-        <div class="nav-text">Beranda</div>
-    </a>
-    <a href="#" class="nav-item">
-        <div class="nav-icon">
-            <i class="fas fa-gamepad"></i>
-        </div>
-        <div class="nav-text">Game</div>
-    </a>
-    <a href="#" class="nav-item">
-        <div class="nav-icon">
-            <i class="fas fa-fire"></i>
-        </div>
-        <div class="nav-text">Trending</div>
-    </a>
-    <a href="#" class="nav-item">
-        <div class="nav-icon">
-            <i class="fas fa-user"></i>
-        </div>
-        <div class="nav-text">Profil</div>
-    </a>
 </div>
 
 <script>
     // Optimasi untuk mobile
     document.addEventListener('DOMContentLoaded', function() {
+        console.log("Halaman dimuat. Scroll seharusnya berfungsi.");
+        
         // Touch feedback untuk card
         const cards = document.querySelectorAll('.card');
-        let touchStartY = 0;
         
         cards.forEach(card => {
-            card.addEventListener('touchstart', function(e) {
-                touchStartY = e.touches[0].clientY;
+            card.addEventListener('touchstart', function() {
                 this.style.transition = 'none';
                 this.style.transform = 'scale(0.98)';
             });
@@ -794,16 +807,6 @@
                 this.style.transition = 'all 0.3s ease';
                 this.style.transform = 'scale(1)';
             });
-            
-            card.addEventListener('touchmove', function(e) {
-                // Mencegah scroll saat menggeser pada card
-                const touchY = e.touches[0].clientY;
-                const diffY = Math.abs(touchY - touchStartY);
-                
-                if (diffY < 10) {
-                    e.preventDefault();
-                }
-            }, { passive: false });
         });
         
         // Nav item aktif
@@ -822,12 +825,14 @@
         });
         
         // Menu toggle
-        const menuToggle = document.querySelector('.menu-toggle');
-        menuToggle.addEventListener('click', function() {
-            alert('Menu akan datang di versi berikutnya!');
-            if (window.navigator.vibrate) {
-                window.navigator.vibrate(20);
-            }
+        const menuToggles = document.querySelectorAll('.menu-toggle');
+        menuToggles.forEach(toggle => {
+            toggle.addEventListener('click', function() {
+                alert('Menu akan datang di versi berikutnya!');
+                if (window.navigator.vibrate) {
+                    window.navigator.vibrate(20);
+                }
+            });
         });
         
         // Stat item feedback
@@ -852,36 +857,10 @@
             lastTouchEnd = now;
         }, false);
         
-        // Optimasi scroll untuk iOS
-        document.addEventListener('touchmove', function(e) {
-            if (e.scale !== 1) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-        
-        // Deteksi orientasi
-        function handleOrientationChange() {
-            if (window.innerHeight > window.innerWidth) {
-                // Portrait
-                document.body.classList.remove('landscape');
-                document.body.classList.add('portrait');
-            } else {
-                // Landscape
-                document.body.classList.remove('portrait');
-                document.body.classList.add('landscape');
-            }
-        }
-        
-        window.addEventListener('resize', handleOrientationChange);
-        window.addEventListener('orientationchange', handleOrientationChange);
-        handleOrientationChange();
-        
-        // Preload gambar untuk performa lebih baik
-        const icons = document.querySelectorAll('.game-icon i');
-        icons.forEach(icon => {
-            // Force icon rendering
-            icon.offsetHeight;
-        });
+        // Test scroll
+        document.body.style.height = '200vh'; // Pastikan ada cukup konten untuk discroll
+        console.log("Tinggi body:", document.body.scrollHeight);
+        console.log("Tinggi viewport:", window.innerHeight);
     });
 </script>
 
