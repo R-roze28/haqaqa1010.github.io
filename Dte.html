@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Dodge the Enemy — Mini Game</title>
+<style>
+  :root{
+    --bg:#061022;
+    --card:#0e1724;
+    --accent:#00eaff;
+    --muted:#9aa6b2;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  body{
+    background: linear-gradient(180deg,#061022 0%, #071427 60%);
+    color:#e6eef6;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+
+  .container{
+    width:100%;
+    max-width:420px; /* mobile first */
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border:1px solid rgba(255,255,255,0.04);
+    border-radius:14px;
+    padding:14px;
+    box-shadow:0 8px 30px rgba(2,6,23,0.6);
+  }
+
+  .header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .title{font-weight:700;font-size:18px}
+  .hud{
+    display:flex;
+    gap:8px;
+    align-items:center;
+  }
+  .pill{
+    background:rgba(255,255,255,0.03);
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:13px;
+    border:1px solid rgba(0,234,255,0.07);
+  }
+
+  /* game area */
+  .stage{
+    position:relative;
+    width:100%;
+    height:520px;
+    max-height:75vh;
+    background:linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.35));
+    border-radius:10px;
+    overflow:hidden;
+    margin:10px 0;
+    touch-action:none;
+    border:1px solid rgba(255,255,255,0.03);
+  }
+
+  canvas{display:block;width:100%;height:100%;}
+
+  .controls{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    margin-top:10px;
+  }
+  .btn{
+    flex:1;
+    padding:10px;
+    border-radius:10px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border:1px solid rgba(255,255,255,0.03);
+    color:var(--accent);
+    font-weight:600;
+    text-align:center;
+    user-select:none;
+  }
+  .btn.primary{
+    background:linear-gradient(90deg,var(--accent),#7df0ff);
+    color:#04202a;
+    border:none;
+  }
+  .small{
+    font-size:13px;padding:8px;border-radius:8px;
+  }
+
+  .footer{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:10px;
+    gap:8px;
+  }
+  .muted{color:var(--muted); font-size:13px}
+
+  /* on-screen left/right */
+  .touch-controls{
+    display:flex;
+    gap:10px;
+    margin-top:12px;
+  }
+  .touch-pad{
+    flex:1;
+    padding:12px;
+    border-radius:10px;
+    background:rgba(255,255,255,0.02);
+    text-align:center;
+    user-select:none;
+    font-weight:700;
+  }
+
+  /* game-over overlay */
+  .overlay{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(180deg, rgba(2,6,23,0.6), rgba(2,6,23,0.7));
+    color:#fff;
+    z-index:20;
+    flex-direction:column;
+    gap:10px;
+    padding:20px;
+    text-align:center;
+  }
+  .hidden{display:none}
+  @media(min-width:900px){
+    .container{max-width:700px}
+  }
+  
+  #backBtn {
+    background: #00eaff;
+    color: #000;
+    border: none;
+    padding: 10px 18px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+#backBtn:hover {
+    background: #00c0cc;
+    transform: scale(1.05);
+}
+
+</style>
+</head>
+<body>
+<div class="container" role="application" aria-label="Dodge the Enemy game">
+<button id="backBtn"><a href="index.html" style="text-decoration: none;">⟵ Kembali</a>
+  </button>
+  <div class="header">
+    <div>
+      <div class="title">Dodge the Enemy</div>
+      <div class="muted" style="font-size:12px">Hindari musuh yang jatuh — tahan selama mungkin</div>
+    </div>
+
+    <div class="hud">
+      <div class="pill">Score: <span id="score">0</span></div>
+      <div class="pill">High: <span id="high">0</span></div>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="gameCanvas" width="420" height="520"></canvas>
+
+    <!-- overlay (game over / paused) -->
+    <div id="overlay" class="overlay hidden" role="status" aria-live="polite">
+      <div id="overlayText" style="font-size:20px;font-weight:700">Game Over</div>
+      <div id="overlayScore" style="font-size:14px; color:var(--muted)"></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <div id="restartBtn" class="btn primary small">Restart</div>
+        <div id="resumeBtn" class="btn small">Resume</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls" aria-hidden="false">
+    <div id="leftBtn" class="btn">◀ Left</div>
+    <div id="pauseBtn" class="btn">Pause</div>
+    <div id="rightBtn" class="btn">Right ▶</div>
+  </div>
+
+  <div class="touch-controls" style="margin-top:8px">
+    <div class="touch-pad" id="touchLeft">Touch & Hold ◀</div>
+    <div class="touch-pad" id="touchRight">Touch & Hold ▶</div>
+  </div>
+
+  <div class="footer">
+    <div class="muted">Controls: ← → / touch buttons / on-screen</div>
+    <div style="display:flex; gap:8px;">
+      <div id="difficultyInfo" class="pill small">Difficulty: Normal</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Dodge the Enemy - Vanilla JS */
+/* Notes:
+   - Player moves left/right
+   - Enemies spawn from top and fall
+   - Score increases with time survived and per enemy avoided
+*/
+
+(() => {
+  // Elements
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const stage = document.getElementById('stage');
+  const scoreEl = document.getElementById('score');
+  const highEl = document.getElementById('high');
+  const overlay = document.getElementById('overlay');
+  const overlayText = document.getElementById('overlayText');
+  const overlayScore = document.getElementById('overlayScore');
+  const restartBtn = document.getElementById('restartBtn');
+  const resumeBtn = document.getElementById('resumeBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const leftBtn = document.getElementById('leftBtn');
+  const rightBtn = document.getElementById('rightBtn');
+  const touchLeft = document.getElementById('touchLeft');
+  const touchRight = document.getElementById('touchRight');
+  const difficultyInfo = document.getElementById('difficultyInfo');
+
+  // Dimensions (use internal canvas pixels for stable physics)
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // Game state
+  let lastTime = 0;
+  let spawnTimer = 0;
+  let spawnInterval = 1100; // initial spawn ms
+  let difficultyTimer = 0;
+  let running = false;
+  let paused = false;
+  let score = 0;
+  let highScore = Number(localStorage.getItem('dodge_high') || '0');
+
+  highEl.textContent = highScore;
+
+  // Player
+  const player = {
+    w: 48,
+    h: 48,
+    x: (W - 48) / 2,
+    y: H - 64,
+    speed: 300, // pixels per second
+    vx: 0,
+    color: '#00eaff',
+    invulnerable: false
+  };
+
+  // Enemy template
+  const enemies = [];
+  function makeEnemy() {
+    const size = Math.floor(Math.random() * 28) + 22; // 22..50
+    const x = Math.floor(Math.random() * (W - size));
+    const speed = Math.random() * 120 + 120 + (score * 0.3); // gets faster with score
+    const type = Math.random() < 0.12 ? 'big' : 'normal';
+    return { x, y: -size - 10, w: size, h: size, speed, type, color: type === 'big' ? '#ff7a7a' : '#ffd166' };
+  }
+
+  // Utility: AABB collision
+  function collides(a, b) {
+    return !(a.x + a.w < b.x || a.x > b.x + b.w || a.y + a.h < b.y || a.y > b.y + b.h);
+  }
+
+  // Input
+  const input = { left: false, right: false };
+  function setDifficultyLabel() {
+    if (spawnInterval > 900) difficultyInfo.textContent = 'Difficulty: Easy';
+    else if (spawnInterval > 600) difficultyInfo.textContent = 'Difficulty: Normal';
+    else difficultyInfo.textContent = 'Difficulty: Hard';
+  }
+  setDifficultyLabel();
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a') input.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd') input.right = true;
+    if (e.key === ' ' || e.key === 'Spacebar') togglePause();
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a') input.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd') input.right = false;
+  });
+
+  // Buttons
+  leftBtn.addEventListener('mousedown', () => input.left = true);
+  leftBtn.addEventListener('mouseup', () => input.left = false);
+  leftBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); input.left=true; }, {passive:false});
+  leftBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); input.left=false; }, {passive:false});
+
+  rightBtn.addEventListener('mousedown', () => input.right = true);
+  rightBtn.addEventListener('mouseup', () => input.right = false);
+  rightBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); input.right=true; }, {passive:false});
+  rightBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); input.right=false; }, {passive:false});
+
+  touchLeft.addEventListener('touchstart', (e)=>{ e.preventDefault(); input.left=true; }, {passive:false});
+  touchLeft.addEventListener('touchend', (e)=>{ e.preventDefault(); input.left=false; }, {passive:false});
+  touchRight.addEventListener('touchstart', (e)=>{ e.preventDefault(); input.right=true; }, {passive:false});
+  touchRight.addEventListener('touchend', (e)=>{ e.preventDefault(); input.right=false; }, {passive:false});
+
+  pauseBtn.addEventListener('click', togglePause);
+  restartBtn.addEventListener('click', () => { startGame(true); });
+  resumeBtn.addEventListener('click', () => { hideOverlay(); resume(); });
+
+  // Stage touch drag for direct move (optional)
+  let dragging = false;
+  let lastTouchX = null;
+  stage.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    lastTouchX = e.clientX;
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const rect = canvas.getBoundingClientRect();
+    // map pointer x to canvas coordinates proportionally
+    const px = (e.clientX - rect.left) * (W / rect.width);
+    player.x = Math.max(0, Math.min(W - player.w, px - player.w / 2));
+  });
+  window.addEventListener('pointerup', () => { dragging = false; lastTouchX = null; });
+
+  // Game loop
+  function update(dt) {
+    if (!running || paused) return;
+
+    // move player
+    player.vx = 0;
+    if (input.left) player.vx = -player.speed;
+    if (input.right) player.vx = player.speed;
+
+    player.x += player.vx * dt;
+    // clamp
+    if (player.x < 0) player.x = 0;
+    if (player.x + player.w > W) player.x = W - player.w;
+
+    // spawn enemies
+    spawnTimer += dt * 1000;
+    if (spawnTimer >= spawnInterval) {
+      spawnTimer = 0;
+      enemies.push(makeEnemy());
+    }
+
+    // difficulty increase gradually
+    difficultyTimer += dt * 1000;
+    if (difficultyTimer > 3500) {
+      difficultyTimer = 0;
+      if (spawnInterval > 350) spawnInterval *= 0.95; // faster spawn
+      setDifficultyLabel();
+    }
+
+    // update enemies
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      e.y += e.speed * dt;
+      // if passed bottom -> remove & reward small score
+      if (e.y > H + 50) {
+        enemies.splice(i, 1);
+        score += 1; // survived one enemy
+        scoreEl.textContent = score;
+      } else {
+        // collision?
+        const pBox = {x: player.x, y: player.y, w: player.w, h: player.h};
+        const eBox = {x: e.x, y: e.y, w: e.w, h: e.h};
+        if (!player.invulnerable && collides(pBox, eBox)) {
+          // hit!
+          endGame();
+          return;
+        }
+      }
+    }
+
+    // passive score by time
+    score += dt * 0.4; // partial points per second
+    scoreEl.textContent = Math.floor(score);
+  }
+
+  function draw() {
+    // clear
+    ctx.clearRect(0,0,W,H);
+
+    // background grid or subtle stars
+    // draw floor line
+    ctx.fillStyle = 'rgba(255,255,255,0.02)';
+    ctx.fillRect(0, H - 4, W, 4);
+
+    // draw player
+    drawRoundedRect(ctx, player.x, player.y, player.w, player.h, 8, player.color);
+    // player shine
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(player.x + 6, player.y + 6, player.w - 12, player.h/4);
+
+    // draw enemies
+    enemies.forEach(e => {
+      // shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(e.x + 4, e.y + e.h + 6, e.w - 8, 6);
+      // body
+      drawRoundedRect(ctx, e.x, e.y, e.w, e.h, 6, e.color);
+    });
+
+    // small HUD text inside canvas (fps/active)
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.font = '12px system-ui, Arial';
+    ctx.fillText('Enemies: ' + enemies.length, 8, 18);
+    ctx.fillText('Spawn: ' + Math.round(spawnInterval) + 'ms', 8, 34);
+  }
+
+  function drawRoundedRect(ctx, x, y, w, h, r, color) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  // Game control
+  function startGame(resetHigh=false) {
+    // reset state
+    enemies.length = 0;
+    score = 0;
+    scoreEl.textContent = 0;
+    spawnInterval = 1100;
+    difficultyTimer = 0;
+    spawnTimer = 0;
+    player.x = (W - player.w) / 2;
+    running = true;
+    paused = false;
+    hideOverlay();
+    lastTime = performance.now();
+    // optionally reset high
+    if (resetHigh) {
+      localStorage.removeItem('dodge_high');
+      highScore = 0;
+      highEl.textContent = 0;
+    }
+    loop(lastTime);
+  }
+
+  function endGame() {
+    running = false;
+    paused = false;
+    // finalize score
+    const finalScore = Math.floor(score);
+    overlayText.textContent = 'Game Over';
+    overlayScore.textContent = 'Your score: ' + finalScore;
+    showOverlay();
+    // check highscore
+    if (finalScore > highScore) {
+      highScore = finalScore;
+      localStorage.setItem('dodge_high', String(highScore));
+      highEl.textContent = highScore;
+      overlayScore.textContent = 'New Highscore! ' + finalScore;
+    }
+  }
+
+  function showOverlay() {
+    overlay.classList.remove('hidden');
+  }
+  function hideOverlay() {
+    overlay.classList.add('hidden');
+  }
+
+  function togglePause() {
+    if (!running) return;
+    paused = !paused;
+    pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+    if (paused) {
+      overlayText.textContent = 'Paused';
+      overlayScore.textContent = '';
+      overlay.classList.remove('hidden');
+      resumeBtn.style.display = 'inline-block';
+    } else {
+      hideOverlay();
+    }
+  }
+
+  function resume() {
+    paused = false;
+    pauseBtn.textContent = 'Pause';
+    hideOverlay();
+    lastTime = performance.now();
+    loop(lastTime);
+  }
+
+  // main loop with raf
+  function loop(now) {
+    const dt = Math.min(0.05, (now - lastTime) / 1000); // clamp delta
+    lastTime = now;
+    update(dt);
+    draw();
+    if (running && !paused) requestAnimationFrame(loop);
+  }
+
+  // Start automatically
+  startGame();
+
+  // helpers: responsive canvas scaling (keeps internal resolution stable)
+  function fitCanvasToContainer() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+  }
+  window.addEventListener('resize', fitCanvasToContainer);
+  fitCanvasToContainer();
+
+  // Mobile: tap top half to boost (optional)
+  canvas.addEventListener('touchstart', (e) => {
+    if (!running) startGame();
+  }, {passive:true});
+
+  // expose a tiny debug: click canvas to nudge difficulty
+  canvas.addEventListener('dblclick', () => {
+    spawnInterval = Math.max(300, spawnInterval - 120);
+    setDifficultyLabel();
+  });
+
+})();
+</script>
+</body>
+</html>
