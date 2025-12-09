@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Traffic Control — Mini Game</title>
+<style>
+  :root{
+    --bg:#0b1020;
+    --panel:#0f1724;
+    --accent:#00eaff;
+    --ok:#00c853;
+    --danger:#ff5252;
+    --muted:#9aa3b2;
+  }
+  *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#08121b);color:#e6eef6;display:flex;align-items:center;justify-content:center;padding:20px}
+
+  .wrap{width:360px;max-width:96vw;background:linear-gradient(180deg,#071021,#0b1724);border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  header h1{font-size:16px;margin:0}
+  .hud{display:flex;gap:8px;align-items:center}
+  .chip{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:8px;font-size:13px;color:var(--muted)}
+
+  #game-area{width:100%;aspect-ratio:3/5;background:#07121a;border-radius:10px;overflow:hidden;position:relative;margin-top:10px;border:1px solid rgba(255,255,255,0.03)}
+  canvas{display:block;width:100%;height:100%}
+
+  .controls{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;justify-content:center}
+  button{padding:8px 12px;border-radius:10px;border:none;background:#0b3450;color:#fff;font-weight:600;cursor:pointer}
+  .btn-tog{background:#1a2430}
+  .btn-danger{background:var(--danger)}
+  .small{padding:6px 10px;font-size:13px}
+
+  .legend{display:flex;gap:8px;justify-content:center;margin-top:8px;font-size:13px;color:var(--muted)}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:-1px}
+
+  footer{margin-top:8px;text-align:center;color:var(--muted);font-size:12px}
+  @media (min-width:520px){ .wrap{width:420px} }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Traffic Control — Mini</h1>
+      <div class="hud">
+        <div class="chip">Score: <span id="score">0</span></div>
+        <div class="chip">Time: <span id="time">0</span>s</div>
+      </div>
+    </header>
+
+    <div id="game-area">
+      <canvas id="c"></canvas>
+    </div>
+
+    <div class="controls">
+      <button id="toggleNS" class="btn-tog small">Set NS = GREEN</button>
+      <button id="toggleEW" class="btn-tog small">Set EW = GREEN</button>
+      <button id="auto" class="small">Auto Cycle: OFF</button>
+      <button id="pause" class="small">Pause</button>
+      <button id="restart" class="btn-danger small">Restart</button>
+    </div>
+
+    <div class="legend">
+      <div><span class="dot" style="background:#ff5252"></span>Red</div>
+      <div><span class="dot" style="background:#ffd54f"></span>Yellow</div>
+      <div><span class="dot" style="background:#00e676"></span>Green</div>
+    </div>
+
+    <footer>Control the lights. Prevent collisions. Cars spawn randomly.</footer>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d', { alpha: false });
+
+  // Responsive canvas
+  function fit(){
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.floor(rect.width * devicePixelRatio);
+    canvas.height = Math.floor(rect.height * devicePixelRatio);
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  }
+  // create dynamic size based on parent
+  function setCanvasSize(){
+    const parent = canvas.parentElement;
+    const w = parent.clientWidth;
+    const h = parent.clientHeight;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    fit();
+  }
+  setCanvasSize();
+  new ResizeObserver(setCanvasSize).observe(canvas.parentElement);
+
+  // UI
+  const scoreEl = document.getElementById('score');
+  const timeEl = document.getElementById('time');
+  const btnNS = document.getElementById('toggleNS');
+  const btnEW = document.getElementById('toggleEW');
+  const btnAuto = document.getElementById('auto');
+  const btnPause = document.getElementById('pause');
+  const btnRestart = document.getElementById('restart');
+
+  // Game field geometry (in CSS pixels)
+  const W = () => canvas.width / devicePixelRatio;
+  const H = () => canvas.height / devicePixelRatio;
+  let centerX, centerY, laneWidth, stopDist;
+
+  function recomputeGeometry(){
+    centerX = W()/2;
+    centerY = H()/2;
+    laneWidth = Math.min(60, W()*0.12);
+    stopDist = 70; // distance before center where car must stop if red
+  }
+  recomputeGeometry();
+
+  // Light state: 'NS' means north+south green; 'EW' means east+west green
+  let light = 'NS';
+  let lightTimer = 0;
+  let autoCycle = false;
+  const AUTO_INTERVAL = 4000; // ms green time
+
+  // Game state
+  let cars = [];
+  let frame = 0;
+  let last = performance.now();
+  let running = true;
+  let score = 0;
+  let seconds = 0;
+  let spawnTimer = 0;
+
+  // Car parameters
+  const CAR_W = 28;
+  const CAR_H = 48;
+  const SPAWN_INTERVAL_MIN = 700;
+  const SPAWN_INTERVAL_MAX = 1600;
+
+  function rand(min,max){ return Math.random()*(max-min)+min; }
+  function randInt(min,max){ return Math.floor(rand(min,max+1)); }
+
+  // Car factory
+  function spawnCar(){
+    // direction: N,S,E,W
+    const dirs = ['N','S','E','W'];
+    const dir = dirs[randInt(0,3)];
+    // color
+    const cols = ['#e53935','#ffb300','#43a047','#1e88e5','#8e24aa'];
+    const color = cols[randInt(0, cols.length-1)];
+
+    // starting positions and velocity
+    let x,y,vx=0,vy=0;
+    if(dir==='N'){ x = centerX; y = -CAR_H - 10; vy = rand(1.2,2.4); }
+    if(dir==='S'){ x = centerX; y = H() + 10; vy = -rand(1.2,2.4); }
+    if(dir==='W'){ x = -CAR_W - 10; y = centerY; vx = rand(1.2,2.4); }
+    if(dir==='E'){ x = W() + 10; y = centerY; vx = -rand(1.2,2.4); }
+
+    // Each car has a stopLine coordinate where it must stop for red
+    const stopLine = {
+      N: centerY - stopDist - CAR_H,
+      S: centerY + stopDist,
+      W: centerX - stopDist - CAR_W,
+      E: centerX + stopDist
+    };
+
+    cars.push({
+      id: Math.random().toString(36).slice(2,8),
+      dir, x, y, vx, vy, color,
+      w: CAR_W, h: CAR_H,
+      state: 'approach', // approach, waiting, crossing, passed
+      stopLine: stopLine[dir],
+      passed: false
+    });
+  }
+
+  // Spawn timing
+  function scheduleNextSpawn(){
+    spawnTimer = randInt(SPAWN_INTERVAL_MIN, SPAWN_INTERVAL_MAX);
+  }
+  scheduleNextSpawn();
+
+  // Light controls
+  btnNS.addEventListener('click', ()=> setLight('NS'));
+  btnEW.addEventListener('click', ()=> setLight('EW'));
+  btnAuto.addEventListener('click', ()=> {
+    autoCycle = !autoCycle;
+    btnAuto.textContent = 'Auto Cycle: ' + (autoCycle? 'ON':'OFF');
+    if(autoCycle){ lightTimer = AUTO_INTERVAL; } // trigger cycle soon
+  });
+  btnPause.addEventListener('click', ()=> {
+    running = !running;
+    btnPause.textContent = running ? 'Pause' : 'Resume';
+    if(running){ last = performance.now(); requestAnimationFrame(loop); }
+  });
+  btnRestart.addEventListener('click', resetGame);
+
+  function setLight(to){
+    if(light === to) return;
+    light = to;
+    // instant switch (no yellow for simplicity)
+  }
+
+  // Collision detection: if two or more cars in intersection area at same time => crash
+  function countCarsInIntersection(){
+    const R = 28; // radius around center considered intersection
+    let cnt = 0;
+    for(const c of cars){
+      if(c.state === 'crossing'){
+        cnt++;
+      } else {
+        // if car center within R of center, treat as crossing
+        const cx = c.x + c.w/2;
+        const cy = c.y + c.h/2;
+        const dx = Math.abs(cx - centerX);
+        const dy = Math.abs(cy - centerY);
+        if(Math.max(dx,dy) < R) cnt++;
+      }
+    }
+    return cnt;
+  }
+
+  function update(dt){
+    if(!running) return;
+
+    frame++;
+    // auto cycle
+    if(autoCycle){
+      lightTimer -= dt;
+      if(lightTimer <= 0){
+        light = (light === 'NS') ? 'EW' : 'NS';
+        lightTimer = AUTO_INTERVAL;
+      }
+    }
+
+    // spawn cars
+    spawnTimer -= dt;
+    if(spawnTimer <= 0){
+      spawnCar();
+      scheduleNextSpawn();
+    }
+
+    // update cars
+    for(const c of cars){
+      // compute whether this car's direction currently has green
+      const greenNS = (light === 'NS');
+      const allowed = (c.dir === 'N' || c.dir === 'S') ? greenNS : !greenNS;
+
+      // Determine stopping behavior: if red and car approaching stopLine and hasn't crossed it, stop.
+      if(c.dir === 'N'){
+        if(!allowed && (c.y + c.h) >= c.stopLine && c.state === 'approach'){
+          c.state = 'waiting';
+          c.vy = 0;
+        } else if(c.state === 'waiting' && allowed){
+          c.state = 'crossing';
+          c.vy = c.vy || rand(1.2,2.4);
+        } else if(c.state === 'approach'){
+          // continue approaching: vy already set
+        }
+      }
+      if(c.dir === 'S'){
+        if(!allowed && c.y <= c.stopLine && c.state === 'approach'){
+          c.state = 'waiting'; c.vy = 0;
+        } else if(c.state === 'waiting' && allowed){
+          c.state = 'crossing';
+          c.vy = c.vy || -rand(1.2,2.4);
+        }
+      }
+      if(c.dir === 'W'){
+        if(!allowed && (c.x + c.w) >= c.stopLine && c.state === 'approach'){
+          c.state = 'waiting'; c.vx = 0;
+        } else if(c.state === 'waiting' && allowed){
+          c.state = 'crossing';
+          c.vx = c.vx || rand(1.2,2.4);
+        }
+      }
+      if(c.dir === 'E'){
+        if(!allowed && c.x <= c.stopLine && c.state === 'approach'){
+          c.state = 'waiting'; c.vx = 0;
+        } else if(c.state === 'waiting' && allowed){
+          c.state = 'crossing';
+          c.vx = c.vx || -rand(1.2,2.4);
+        }
+      }
+
+      // If already crossing or approach and green, set to crossing when center reached
+      // Move
+      c.x += c.vx * (dt/16.666);
+      c.y += c.vy * (dt/16.666);
+
+      // If car passes far beyond screen, mark passed and remove later
+      if(c.dir === 'N' && c.y > H()+50) c.passed = true;
+      if(c.dir === 'S' && c.y + c.h < -50) c.passed = true;
+      if(c.dir === 'W' && c.x > W()+50) c.passed = true;
+      if(c.dir === 'E' && c.x + c.w < -50) c.passed = true;
+
+      // If car's bounding box overlaps center area, ensure state crossing
+      const cx = c.x + c.w/2, cy = c.y + c.h/2;
+      if(Math.abs(cx - centerX) < 1 && Math.abs(cy - centerY) < 1) {
+        c.state = 'crossing';
+      }
+      // If car already moved past intersection center by margin, mark passed
+      if(c.dir === 'N' && c.y - centerY > 60) c.passed = true;
+      if(c.dir === 'S' && centerY - (c.y + c.h) > 60) c.passed = true;
+      if(c.dir === 'W' && c.x - centerX > 60) c.passed = true;
+      if(c.dir === 'E' && centerX - (c.x + c.w) > 60) c.passed = true;
+    }
+
+    // remove passed cars and count score
+    for(let i = cars.length - 1; i >= 0; i--){
+      if(cars[i].passed){
+        score += 1;
+        cars.splice(i,1);
+      }
+    }
+
+    // collision: if 2 or more cars are inside intersection radius -> crash
+    const inCount = countCarsInIntersection();
+    if(inCount > 1){
+      running = false;
+      showGameOver();
+    }
+  }
+
+  function draw(){
+    // background
+    ctx.fillStyle = '#07121a';
+    ctx.fillRect(0,0,W(),H());
+
+    // road (vertical & horizontal)
+    const roadW = laneWidth*2;
+    ctx.fillStyle = '#2b2b2b';
+    // vertical road
+    ctx.fillRect(centerX - roadW/2, 0, roadW, H());
+    // horizontal road
+    ctx.fillRect(0, centerY - roadW/2, W(), roadW);
+
+    // lane markers
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([12,12]);
+    // vertical dashed
+    ctx.beginPath();
+    ctx.moveTo(centerX, 0); ctx.lineTo(centerX, H());
+    ctx.stroke();
+    // horizontal dashed
+    ctx.beginPath();
+    ctx.moveTo(0, centerY); ctx.lineTo(W(), centerY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // drawing stop lines
+    ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = 0.9;
+    // north stop
+    ctx.fillRect(centerX - roadW/2, centerY - stopDist - 4 - CAR_H, roadW, 4);
+    // south stop
+    ctx.fillRect(centerX - roadW/2, centerY + stopDist + CAR_H, roadW, 4);
+    // west stop
+    ctx.fillRect(centerX - stopDist - 4 - CAR_W, centerY - roadW/2, 4, roadW);
+    // east stop
+    ctx.fillRect(centerX + stopDist + CAR_W, centerY - roadW/2, 4, roadW);
+    ctx.globalAlpha = 1;
+
+    // draw intersection box (for clarity)
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(centerX - 60, centerY - 60, 120, 120);
+
+    // draw cars
+    for(const c of cars){
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.fillStyle = c.color;
+      ctx.beginPath();
+      ctx.roundRect(0,0,c.w,c.h,6);
+      ctx.fill();
+      // windows
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.fillRect(c.w*0.12, c.h*0.22, c.w*0.6, c.h*0.35);
+      ctx.restore();
+    }
+
+    // draw traffic lights (simple)
+    // NS lights on top & bottom
+    drawLight(centerX - laneWidth - 30, centerY - stopDist - 120, (light==='NS')?'green':'red');
+    drawLight(centerX + laneWidth + 10, centerY + stopDist + 50, (light==='NS')?'green':'red');
+    // EW lights left & right
+    drawLight(centerX - stopDist - 120, centerY - laneWidth - 30, (light==='EW')?'green':'red');
+    drawLight(centerX + stopDist + 50, centerY + laneWidth + 10, (light==='EW')?'green':'red');
+
+    // if paused show overlay
+    if(!running){
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0,0,W(),H());
+      ctx.fillStyle = '#fff';
+      ctx.font = '20px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('GAME OVER', centerX, centerY - 8);
+      ctx.font = '14px Arial';
+      ctx.fillText('Tekan Restart untuk main lagi', centerX, centerY + 18);
+    }
+  }
+
+  function drawLight(x,y,state){
+    // pole
+    ctx.fillStyle = '#222';
+    ctx.fillRect(x, y, 28, 60);
+    // three circles (red, yellow, green)
+    const r = 6;
+    ctx.beginPath(); ctx.fillStyle = (state==='green'?'#ff5252':'#4a1f1f'); ctx.arc(x+14,y+10,r,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.fillStyle = (state==='green'?'#ffb74d':'#4a3a1f'); ctx.arc(x+14,y+30,r,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.fillStyle = (state==='green'?'#00e676':'#0f4024'); ctx.arc(x+14,y+50,r,0,Math.PI*2); ctx.fill();
+  }
+
+  // helper: roundRect on ctx for browsers
+  if(!CanvasRenderingContext2D.prototype.roundRect){
+    CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+      if (w < 2 * r) r = w / 2;
+      if (h < 2 * r) r = h / 2;
+      this.beginPath();
+      this.moveTo(x+r, y);
+      this.arcTo(x+w, y, x+w, y+h, r);
+      this.arcTo(x+w, y+h, x, y+h, r);
+      this.arcTo(x, y+h, x, y, r);
+      this.arcTo(x, y, x+w, y, r);
+      this.closePath();
+      return this;
+    }
+  }
+
+  function showGameOver(){
+    // small flash
+    setTimeout(()=>{}, 200);
+    // ensure UI updated
+    scoreEl.textContent = score;
+  }
+
+  // main loop
+  function loop(now){
+    const dt = Math.min(40, now - last);
+    last = now;
+    if(running){
+      update(dt);
+      // increment time and update scoreboard
+      if(frame % Math.floor(1000/Math.max(1, dt)) === 0){}
+      // time
+      seconds += dt/1000;
+      timeEl.textContent = Math.floor(seconds);
+      scoreEl.textContent = score;
+    }
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // initial spawn to avoid empty screen
+  for(let i=0;i<2;i++) spawnCar();
+
+  // helpers: restart
+  function resetGame(){
+    cars = [];
+    score = 0;
+    seconds = 0;
+    running = true;
+    light = 'NS';
+    autoCycle = false;
+    btnAuto.textContent = 'Auto Cycle: OFF';
+    scheduleNextSpawn();
+    last = performance.now();
+    requestAnimationFrame(loop);
+  }
+
+  // keyboard shortcuts: N/E toggle, Space pause
+  window.addEventListener('keydown', e=>{
+    if(e.key === 'n' || e.key === 'N') setLight('NS');
+    if(e.key === 'e' || e.key === 'E') setLight('EW');
+    if(e.code === 'Space'){ running = !running; btnPause.textContent = running ? 'Pause' : 'Resume'; }
+    if(e.key === 'r' || e.key === 'R') resetGame();
+  });
+
+  // expose some debug functions in console (optional)
+  window._traffic = { spawnCar, setLight, resetGame };
+
+  // ensure geometry updates on resize
+  new ResizeObserver(()=>{
+    recomputeGeometry();
+  }).observe(canvas);
+
+})();
+</script>
+</body>
+</html>
